@@ -1,0 +1,12 @@
+  query {
+  characters{
+    info{
+      count
+      }
+    results{
+      name
+
+      }
+    }
+  }
+
