@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/TylerBrock/colorjson"
 	"github.com/charmbracelet/bubbles/list"
@@ -18,9 +19,18 @@ import (
 var (
 	docStyle      = lipgloss.NewStyle().Margin(1, 2)
 	quitTextStyle = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-	spinnerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+	spinnerStyle  = lipgloss.NewStyle().Width(15).Height(5).Align(lipgloss.Center, lipgloss.Center).Foreground(lipgloss.Color("63"))
+	textStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Render
+	helpStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	url           = "https://rickandmortyapi.com/graphql"
 )
+
+const (
+	spinnerView currView = iota
+	listView
+)
+
+type currView uint
 
 type item struct {
 	title, desc string
@@ -31,6 +41,7 @@ func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
 type model struct {
+	currView currView
 	list     list.Model
 	spinner  spinner.Model
 	loading  bool
@@ -53,6 +64,7 @@ func newModel() model {
 
 	s := spinner.New()
 	s.Style = spinnerStyle
+	s.Spinner = spinner.Pulse
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Queries"
@@ -65,6 +77,9 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
@@ -78,11 +93,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, gqlReq(url, "./queries/"+m.choice)
 		}
+		switch m.currView {
+		case spinnerView:
+			m.spinner, cmd = m.spinner.Update(msg)
+			cmds = append(cmds, cmd)
+
+		case listView:
+			m.list, cmd = m.list.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 
 	case listItems:
 		cmd := m.list.SetItems(msg)
-		m.loading = false
-		return m, cmd
+		m.currView = listView
+		cmds = append(cmds, cmd)
 
 	case responseMsg:
 		m.response = msg
@@ -95,31 +119,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
 
-	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
-	// if !m.loading {
-	// 	return docStyle.Render(m.list.View())
-	// }
-	if m.response != "" {
-		return quitTextStyle.Render(string(m.response))
+	var s string
+	if m.currView == spinnerView {
+		s += lipgloss.JoinHorizontal(lipgloss.Center, m.spinner.View(), "loading")
+	} else {
+		s += docStyle.Render(m.list.View())
 	}
-	return docStyle.Render(m.list.View())
-	// return docStyle.Render(m.spinner.View())
+	return s
 }
 
 func main() {
-	p := tea.NewProgram(newModel())
+	p := tea.NewProgram(newModel(), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
@@ -144,6 +168,8 @@ func getQueriesList(rootDir string) tea.Cmd {
 		})
 
 		checkError(err)
+		// TODO: remove time sleep
+		time.Sleep(2 * time.Second)
 		return listItems(queriesNames)
 	}
 }
