@@ -54,8 +54,8 @@ func gqlReq(url string, file string) tea.Cmd {
 	}
 }
 
-func (m *mainModel) headerView() string {
-	title := titleStyle.Render("Mr. Pager")
+func (m *mainModel) headerView(queryName string) string {
+	title := titleStyle.Render(queryName)
 	line := strings.Repeat("─", max(0, m.response.model.Width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }

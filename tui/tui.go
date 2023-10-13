@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -25,11 +26,15 @@ type mainModel struct {
 	currView    currView
 	spinner     spinnerModel
 	queriesList queriesList
+	help        help.Model
 	response    response
 }
 
 func newModel() mainModel {
 	m := mainModel{currView: spinnerView}
+	m.help = help.New()
+	m.help.ShowAll = true
+
 	m.newSpinnerModel()
 	m.newQueriesListModel()
 	return m
@@ -56,7 +61,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
-		headerHeight := lipgloss.Height(m.headerView())
+		headerHeight := lipgloss.Height(m.headerView(m.queriesList.selected))
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
 		m.queriesList.list.SetSize(msg.Width-h, msg.Height-v)
@@ -101,48 +106,13 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-			// case "tab":
-			// 	m.switchView()
-		}
-
-		switch m.currView {
-		case listView:
-			if msg.String() == "enter" {
-				i, ok := m.queriesList.list.SelectedItem().(item)
-				if ok {
-					m.queriesList.selected = i.Title()
-				}
-				return m, gqlReq(url, "./queries/"+m.queriesList.selected)
-
-			}
-
-		case spinnerView:
-			if msg.String() == "n" {
-				m.nextSpinner()
-				m.resetSpinner()
-				cmds = append(cmds, m.spinner.model.Tick)
-			}
-		}
+		cmds = append(cmds, m.getGlobalCommands(msg)...)
+		cmds = append(cmds, m.getPerViewCommands(msg)...)
 	}
 
-	switch m.currView {
-	case spinnerView:
-		m.spinner.model, cmd = m.spinner.model.Update(msg)
-		cmds = append(cmds, cmd)
-
-	case listView:
-		m.queriesList.list, cmd = m.queriesList.list.Update(msg)
-		cmds = append(cmds, cmd)
-
-	case responseView:
-		m.response.model, cmd = m.response.model.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
+	cmds = append(cmds, m.getUpdateViewsCommands(msg)...)
 	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -154,9 +124,9 @@ func (m mainModel) View() string {
 	case listView:
 		s += docStyle.Render(m.queriesList.list.View())
 	case responseView:
-		s += fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.response.model.View(), m.footerView())
+		s += fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView())
+		// s += helpStyle.Render(m.help.View(keys))
 
 	}
-
 	return s
 }
