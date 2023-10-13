@@ -6,38 +6,37 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/felipeospina21/gql-tui-client/query"
-	queryui "github.com/felipeospina21/gql-tui-client/tui/queryUi"
-	spinnerui "github.com/felipeospina21/gql-tui-client/tui/spinnerUi"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
-	spinnerView currView = iota
+	url                                 = "https://rickandmortyapi.com/graphql"
+	useHighPerformanceRenderer          = false
+	spinnerView                currView = iota
 	listView
+	responseView
 )
 
 type (
 	currView uint
-	errMsg   struct{ err error }
 )
 
-type MainModel struct {
-	currView currView
-	list     tea.Model
-	spinner  tea.Model
-	// choice   string
-	response query.ResponseMsg
-	err      error
+type mainModel struct {
+	currView    currView
+	spinner     spinnerModel
+	queriesList queriesList
+	response    response
 }
 
-func (e errMsg) Error() string { return e.err.Error() }
-
-func New() MainModel {
-	return MainModel{currView: spinnerView, list: queryui.NewModel(), spinner: spinnerui.NewModel()}
+func newModel() mainModel {
+	m := mainModel{currView: spinnerView}
+	m.newSpinnerModel()
+	m.newQueriesListModel()
+	return m
 }
 
 func Start() {
-	p := tea.NewProgram(New(), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
@@ -45,46 +44,119 @@ func Start() {
 	}
 }
 
-func (m MainModel) Init() tea.Cmd {
-	// return nil
-	return query.GetQueriesList("./queries/")
+func (m mainModel) Init() tea.Cmd {
+	return tea.Batch(m.spinner.model.Tick, getQueriesList("./queries/"))
 }
 
-func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		headerHeight := lipgloss.Height(m.headerView())
+		footerHeight := lipgloss.Height(m.footerView())
+		verticalMarginHeight := headerHeight + footerHeight
+		m.queriesList.list.SetSize(msg.Width-h, msg.Height-v)
+		cmd := m.setViewportViewSize(msg, headerHeight, verticalMarginHeight)
+
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+
+	case error:
+		m.response.err = msg
+		m.response.model.SetContent(string(m.response.err.Error()))
+		isRespReady := func() tea.Msg {
+			return isResponseReady(true)
+		}
+		cmds = append(cmds, isRespReady)
+
+	case responseMsg:
+		m.response.content = msg
+		m.response.model.SetContent(string(m.response.content))
+
+		isRespReady := func() tea.Msg {
+			return isResponseReady(true)
+		}
+		cmds = append(cmds, isRespReady)
+
+	case isListReady:
+		m.currView = listView
+
+	case isResponseReady:
+		m.currView = responseView
+
+	case listItems:
+		cmd := m.queriesList.list.SetItems(msg)
+		ready := func() tea.Msg {
+			return isListReady(true)
+		}
+		cmds = append(cmds, cmd, ready)
+
 	case spinner.TickMsg:
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
+		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		cmds = append(cmds, cmd)
 
-	case queryui.IsReady:
-		m.currView = listView
-		// return m, tea.Quit
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+			// case "tab":
+			// 	m.switchView()
+		}
 
-	default:
-		m.currView = spinnerView
+		switch m.currView {
+		case listView:
+			if msg.String() == "enter" {
+				i, ok := m.queriesList.list.SelectedItem().(item)
+				if ok {
+					m.queriesList.selected = i.Title()
+				}
+				return m, gqlReq(url, "./queries/"+m.queriesList.selected)
+
+			}
+
+		case spinnerView:
+			if msg.String() == "n" {
+				m.nextSpinner()
+				m.resetSpinner()
+				cmds = append(cmds, m.spinner.model.Tick)
+			}
+		}
 	}
 
 	switch m.currView {
 	case spinnerView:
-		m.spinner, cmd = m.spinner.Update(msg)
+		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		cmds = append(cmds, cmd)
 
 	case listView:
-		m.list, cmd = m.list.Update(msg)
+		m.queriesList.list, cmd = m.queriesList.list.Update(msg)
+		cmds = append(cmds, cmd)
+
+	case responseView:
+		m.response.model, cmd = m.response.model.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
-func (m MainModel) View() string {
+func (m mainModel) View() string {
+	var s string
 	switch m.currView {
 	case spinnerView:
-		return m.spinner.View()
+		s += docStyle.Render(m.spinner.model.View())
+	case listView:
+		s += docStyle.Render(m.queriesList.list.View())
+	case responseView:
+		s += fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.response.model.View(), m.footerView())
+
 	}
-	return m.list.View()
+
+	return s
 }
