@@ -10,8 +10,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/felipeospina21/gql-tui-client/config"
 	"github.com/felipeospina21/gql-tui-client/utils"
-	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -40,31 +40,10 @@ func (m *mainModel) newQueriesListModel() {
 	m.queriesList.list.Title = "Queries"
 }
 
-type Config struct {
-	Folder struct {
-		Location string `yaml:"location"`
-	}
-}
-
-func readConfigFile() Config {
-	home := os.Getenv("HOME")
-	configPath := fmt.Sprintf("%s/.config/goql/goql.yaml", home)
-
-	data, err := os.ReadFile(configPath)
-	utils.CheckError(err)
-
-	var config Config
-
-	err = yaml.Unmarshal(data, &config)
-	utils.CheckError(err)
-
-	return config
-}
-
 func getQueriesFolderPath() string {
-	path := readConfigFile().Folder.Location
+	path := config.Read().Folder.Location
 
-	// Match substring that starts with $ and ends with /
+	// NOTE: Match substring that starts with $ and ends with /
 	envVar := regexp.MustCompile(`\$(\w+)(?:/|$)`)
 	idxs := envVar.FindAllStringSubmatchIndex(path, -1)
 
@@ -83,7 +62,7 @@ func getQueriesFolderPath() string {
 
 	}
 
-	// Remove duplicated / symbols
+	// NOTE: Remove duplicated / symbols
 	re := regexp.MustCompile(`/+`)
 	result := re.ReplaceAllString(parsedPath, "/")
 
@@ -92,8 +71,7 @@ func getQueriesFolderPath() string {
 
 func getQueriesList(rootDir string) tea.Cmd {
 	return func() tea.Msg {
-		// // TODO: replace Walk with WalkDir func
-		//
+		// TODO: replace Walk with WalkDir func
 		queriesNames := []list.Item{}
 		err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
