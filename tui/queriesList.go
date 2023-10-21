@@ -2,13 +2,16 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"time"
+	"regexp"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/felipeospina21/gql-tui-client/utils"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -37,6 +40,56 @@ func (m *mainModel) newQueriesListModel() {
 	m.queriesList.list.Title = "Queries"
 }
 
+type Config struct {
+	Folder struct {
+		Location string `yaml:"location"`
+	}
+}
+
+func readConfigFile() Config {
+	home := os.Getenv("HOME")
+	configPath := fmt.Sprintf("%s/.config/goql/goql.yaml", home)
+
+	data, err := os.ReadFile(configPath)
+	utils.CheckError(err)
+
+	var config Config
+
+	err = yaml.Unmarshal(data, &config)
+	utils.CheckError(err)
+
+	return config
+}
+
+func getQueriesFolderPath() string {
+	path := readConfigFile().Folder.Location
+
+	// Match substring that starts with $ and ends with /
+	envVar := regexp.MustCompile(`\$(\w+)(?:/|$)`)
+	idxs := envVar.FindAllStringSubmatchIndex(path, -1)
+
+	var parsedPath string
+
+	for _, idx := range idxs {
+		partialMatch := path[idx[2]:idx[3]]
+		v := os.Getenv(partialMatch)
+
+		if v == "" {
+			log.Fatalf("Didn't find %s env variable", path[idx[0]:idx[1]])
+		}
+
+		s := strings.ReplaceAll(path, "$"+partialMatch, v)
+		parsedPath = s
+
+	}
+
+	// Remove duplicated / symbols
+	re := regexp.MustCompile(`/+`)
+	result := re.ReplaceAllString(parsedPath, "/")
+
+	return result
+}
+
 func getQueriesList(rootDir string) tea.Cmd {
 	return func() tea.Msg {
 		// // TODO: replace Walk with WalkDir func
@@ -54,8 +107,6 @@ func getQueriesList(rootDir string) tea.Cmd {
 		})
 
 		utils.CheckError(err)
-		// TODO: remove time sleep
-		time.Sleep(2 * time.Second)
 		return listItems(queriesNames)
 	}
 }

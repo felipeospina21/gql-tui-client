@@ -16,6 +16,8 @@ const (
 	spinnerView                currView = iota
 	listView
 	responseView
+	fetchingView
+	splitView
 )
 
 type (
@@ -32,6 +34,7 @@ type mainModel struct {
 
 func newModel() mainModel {
 	m := mainModel{currView: spinnerView}
+	m.response.ready = false
 	m.help = help.New()
 	m.help.ShowAll = true
 
@@ -41,7 +44,7 @@ func newModel() mainModel {
 }
 
 func Start() {
-	p := tea.NewProgram(newModel(), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(), tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
@@ -50,7 +53,8 @@ func Start() {
 }
 
 func (m mainModel) Init() tea.Cmd {
-	return tea.Batch(m.spinner.model.Tick, getQueriesList("./queries/"))
+	f := getQueriesFolderPath()
+	return tea.Batch(m.spinner.model.Tick, getQueriesList(f))
 }
 
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -92,7 +96,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currView = listView
 
 	case isResponseReady:
-		m.currView = responseView
+		m.currView = splitView
 
 	case listItems:
 		cmd := m.queriesList.list.SetItems(msg)
@@ -118,11 +122,21 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m mainModel) View() string {
 	var s string
+	var res string
 	switch m.currView {
 	case spinnerView:
 		s += docStyle.Render(m.spinner.model.View())
+
 	case listView:
 		s += docStyle.Render(m.queriesList.list.View())
+
+	case fetchingView:
+		s += lipgloss.JoinHorizontal(lipgloss.Top, docStyle.Render(fmt.Sprintf("%4s", m.queriesList.list.View())), m.spinner.model.View())
+
+	case splitView:
+		res = fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView())
+		s += lipgloss.JoinHorizontal(lipgloss.Top, docStyle.Render(fmt.Sprintf("%4s", m.queriesList.list.View())), res)
+
 	case responseView:
 		s += fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView())
 		// s += helpStyle.Render(m.help.View(keys))

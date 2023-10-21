@@ -12,15 +12,14 @@ func (m *mainModel) getGlobalCommands(msg tea.KeyMsg) []tea.Cmd {
 
 	case "tab":
 		switch m.currView {
-
-		case spinnerView:
-			m.currView = listView
-
 		case listView:
+			m.currView = splitView
+
+		case splitView:
 			m.currView = responseView
 
 		default:
-			m.currView = spinnerView
+			m.currView = listView
 		}
 	}
 	return cmds
@@ -37,7 +36,7 @@ func (m *mainModel) getPerViewCommands(msg tea.KeyMsg) []tea.Cmd {
 			if ok {
 				m.queriesList.selected = i.Title()
 			}
-			m.currView = spinnerView
+			m.currView = fetchingView
 			cmds = append(cmds, gqlReq(url, "./queries/"+m.queriesList.selected))
 		}
 
@@ -51,6 +50,11 @@ func (m *mainModel) getPerViewCommands(msg tea.KeyMsg) []tea.Cmd {
 			m.nextSpinner()
 			m.resetSpinner()
 			cmds = append(cmds, m.spinner.model.Tick)
+		}
+
+	case splitView:
+		if msg.String() == "enter" {
+			m.currView = responseView
 		}
 	}
 

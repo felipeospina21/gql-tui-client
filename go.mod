@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.8.0
 	github.com/fatih/color v1.15.0
 	github.com/machinebox/graphql v0.2.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
