@@ -7,7 +7,8 @@ goql is a gql tui client written in go.
 - [ ] Add support for auth tokens
 - [ ] Add support for env variables
 - [ ] Add cmds with cobra
-- [ ] Fix split view styles
+- [ ] Fix response view not wrapping long text
+- [x] Fix split view styles
 - [ ] Improve tui commands
 - [ ] Add help text (tui commands)
 - [ ] Replace hardcoded list description for query/mutation or folder name (group)
