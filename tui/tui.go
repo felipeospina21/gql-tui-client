@@ -63,8 +63,14 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case isListReady:
+		m.currView = listView
+
+	case isResponseReady:
+		m.currView = splitView
+
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := listStyle.GetFrameSize()
 		headerHeight := lipgloss.Height(m.headerView(m.queriesList.selected))
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
@@ -92,12 +98,6 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, isRespReady)
 
-	case isListReady:
-		m.currView = listView
-
-	case isResponseReady:
-		m.currView = splitView
-
 	case listItems:
 		cmd := m.queriesList.list.SetItems(msg)
 		ready := func() tea.Msg {
@@ -122,23 +122,29 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m mainModel) View() string {
 	var s string
-	var res string
+
+	renderView := map[string]string{
+		"spinner":  spinnerStyle.Render(m.spinner.model.View()),
+		"list":     listStyle.Render(m.queriesList.list.View()),
+		"response": fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView()),
+		// "response": wordwrap.String(fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView()), m.response.model.Width),
+	}
+
 	switch m.currView {
 	case spinnerView:
-		s += docStyle.Render(m.spinner.model.View())
+		s += renderView["spinner"]
 
 	case listView:
-		s += docStyle.Render(m.queriesList.list.View())
+		s += renderView["list"]
 
 	case fetchingView:
-		s += lipgloss.JoinHorizontal(lipgloss.Top, docStyle.Render(fmt.Sprintf("%4s", m.queriesList.list.View())), m.spinner.model.View())
+		s += lipgloss.JoinHorizontal(lipgloss.Top, renderView["list"], renderView["spinner"])
 
 	case splitView:
-		res = fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView())
-		s += lipgloss.JoinHorizontal(lipgloss.Top, docStyle.Render(fmt.Sprintf("%4s", m.queriesList.list.View())), res)
+		s += lipgloss.JoinHorizontal(lipgloss.Top, renderView["list"], renderView["response"])
 
 	case responseView:
-		s += fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView())
+		s += renderView["response"]
 		// s += helpStyle.Render(m.help.View(keys))
 
 	}

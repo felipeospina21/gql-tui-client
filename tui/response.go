@@ -67,13 +67,16 @@ func (m *mainModel) footerView() string {
 }
 
 func (m *mainModel) setViewportViewSize(msg tea.WindowSizeMsg, headerHeight int, verticalMarginHeight int) tea.Cmd {
+	// TODO: Check how to make full width when in response view
+	w := msg.Width - m.queriesList.list.Height()
+
 	if !m.response.ready {
 		// Since this program is using the full size of the viewport we
 		// need to wait until we've received the window dimensions before
 		// we can initialize the viewport. The initial dimensions come in
 		// quickly, though asynchronously, which is why we wait for them
 		// here.
-		m.response.model = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+		m.response.model = viewport.New(w, msg.Height-verticalMarginHeight)
 		m.response.model.YPosition = headerHeight
 		m.response.model.HighPerformanceRendering = useHighPerformanceRenderer
 		m.response.model.SetContent(string(m.response.content))
@@ -85,7 +88,7 @@ func (m *mainModel) setViewportViewSize(msg tea.WindowSizeMsg, headerHeight int,
 		// Render the viewport one line below the header.
 		m.response.model.YPosition = headerHeight + 1
 	} else {
-		m.response.model.Width = msg.Width
+		m.response.model.Width = w
 		m.response.model.Height = msg.Height - verticalMarginHeight
 	}
 	if useHighPerformanceRenderer {
