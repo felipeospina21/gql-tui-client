@@ -68,7 +68,7 @@ func (m *mainModel) footerView() string {
 
 func (m *mainModel) setViewportViewSize(msg tea.WindowSizeMsg, headerHeight int, verticalMarginHeight int) tea.Cmd {
 	// TODO: Check how to make full width when in response view
-	w := msg.Width - m.queriesList.list.Height()
+	w := msg.Width - m.queries.list.Height()
 
 	if !m.response.ready {
 		// Since this program is using the full size of the viewport we

@@ -11,13 +11,15 @@ import (
 )
 
 const (
-	url                                 = "https://rickandmortyapi.com/graphql"
+	// URL                                 = "https://rickandmortyapi.com/graphql"
+	ENV_VARS_CHAR_LIMIT                 = 5000
 	useHighPerformanceRenderer          = false
 	spinnerView                currView = iota
 	listView
 	responseView
 	fetchingView
 	splitView
+	envVarsView
 )
 
 type (
@@ -25,11 +27,12 @@ type (
 )
 
 type mainModel struct {
-	currView    currView
-	spinner     spinnerModel
-	queriesList queriesList
-	help        help.Model
-	response    response
+	currView currView
+	spinner  spinnerModel
+	queries  queriesModel
+	envVars  envVarModel
+	help     help.Model
+	response response
 }
 
 func newModel() mainModel {
@@ -38,12 +41,18 @@ func newModel() mainModel {
 	m.help = help.New()
 	m.help.ShowAll = true
 
+	ev := readEnvVars()
+	s := stringifyEnvVars(ev)
+	apiUrl := ev["URL"]
+
 	m.newSpinnerModel()
-	m.newQueriesListModel()
+	m.newQueriesModel(apiUrl)
+	m.newEnvVarModel(ENV_VARS_CHAR_LIMIT, s)
 	return m
 }
 
 func Start() {
+	// p := tea.NewProgram(newModel())
 	p := tea.NewProgram(newModel(), tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if _, err := p.Run(); err != nil {
@@ -63,6 +72,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case isEditingEnvVars:
+		m.currView = envVarsView
+
 	case isListReady:
 		m.currView = listView
 
@@ -71,11 +83,14 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		h, v := listStyle.GetFrameSize()
-		headerHeight := lipgloss.Height(m.headerView(m.queriesList.selected))
+		headerHeight := lipgloss.Height(m.headerView(m.queries.selected))
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
-		m.queriesList.list.SetSize(msg.Width-h, msg.Height-v)
+		m.queries.list.SetSize(msg.Width-h, msg.Height-v)
 		cmd := m.setViewportViewSize(msg, headerHeight, verticalMarginHeight)
+
+		m.envVars.textarea.SetHeight(msg.Height - v)
+		m.envVars.textarea.SetWidth(msg.Width - h)
 
 		if cmd != nil {
 			cmds = append(cmds, cmd)
@@ -99,7 +114,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, isRespReady)
 
 	case listItems:
-		cmd := m.queriesList.list.SetItems(msg)
+		cmd := m.queries.list.SetItems(msg)
 		ready := func() tea.Msg {
 			return isListReady(true)
 		}
@@ -125,8 +140,9 @@ func (m mainModel) View() string {
 
 	renderView := map[string]string{
 		"spinner":  spinnerStyle.Render(m.spinner.model.View()),
-		"list":     listStyle.Render(m.queriesList.list.View()),
-		"response": fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView()),
+		"list":     listStyle.Render(m.queries.list.View()),
+		"response": fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queries.selected), m.response.model.View(), m.footerView()),
+		"envVars":  varsStyle.Render(m.envVars.textarea.View()),
 		// "response": lipgloss.NewStyle().Width(m.response.model.Width).Render(m.headerView(m.queriesList.selected), string(m.response.content), m.footerView()),
 	}
 
@@ -146,6 +162,9 @@ func (m mainModel) View() string {
 	case responseView:
 		s += renderView["response"]
 		// s += helpStyle.Render(m.help.View(keys))
+
+	case envVarsView:
+		s += renderView["envVars"]
 
 	}
 	return s

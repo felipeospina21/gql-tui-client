@@ -23,21 +23,23 @@ type item struct {
 	title, desc string
 }
 
-type queriesList struct {
+type queriesModel struct {
 	list     list.Model
 	selected string
 	ready    isListReady
+	apiUrl   string
 }
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
-func (m *mainModel) newQueriesListModel() {
+func (m *mainModel) newQueriesModel(apiUrl string) {
 	items := []list.Item{}
 
-	m.queriesList.list = list.New(items, list.NewDefaultDelegate(), 0, 0)
-	m.queriesList.list.Title = "Queries"
+	m.queries.list = list.New(items, list.NewDefaultDelegate(), 0, 0)
+	m.queries.list.Title = "Queries"
+	m.queries.apiUrl = apiUrl
 }
 
 func getQueriesFolderPath() string {
