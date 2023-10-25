@@ -127,7 +127,7 @@ func (m mainModel) View() string {
 		"spinner":  spinnerStyle.Render(m.spinner.model.View()),
 		"list":     listStyle.Render(m.queriesList.list.View()),
 		"response": fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView()),
-		// "response": wordwrap.String(fmt.Sprintf("%s\n%s\n%s", m.headerView(m.queriesList.selected), m.response.model.View(), m.footerView()), m.response.model.Width),
+		// "response": lipgloss.NewStyle().Width(m.response.model.Width).Render(m.headerView(m.queriesList.selected), string(m.response.content), m.footerView()),
 	}
 
 	switch m.currView {
