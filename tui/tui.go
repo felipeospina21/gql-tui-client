@@ -167,5 +167,6 @@ func (m mainModel) View() string {
 		s += renderView["envVars"]
 
 	}
+	// s += helpStyle.Render(m.help.View(keys))
 	return s
 }

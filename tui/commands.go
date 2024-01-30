@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/felipeospina21/gql-tui-client/utils"
 )
@@ -11,17 +12,15 @@ import (
 func (m *mainModel) getGlobalCommands(msg tea.KeyMsg) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	switch msg.String() {
-	case "ctrl+c", "ctrl+q":
-		cmds = append(cmds, tea.Quit)
-
-	case "ctrl+e":
-		// m.envVars.isEditing = isEditingEnvVars(true)
-		// m.envVars.textarea.Focus()
+	switch {
+	case key.Matches(msg, keys.EnvVars):
 		m.currView = envVarsView
 		m.envVars.textarea.Focus()
 
-	case "tab":
+	case key.Matches(msg, keys.Quit):
+		cmds = append(cmds, tea.Quit)
+
+	case key.Matches(msg, keys.Tab):
 		switch m.currView {
 		case listView:
 			m.currView = splitView
@@ -33,6 +32,7 @@ func (m *mainModel) getGlobalCommands(msg tea.KeyMsg) []tea.Cmd {
 			m.currView = listView
 		}
 	}
+
 	return cmds
 }
 
