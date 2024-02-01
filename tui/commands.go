@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/felipeospina21/gql-tui-client/utils"
@@ -31,6 +29,15 @@ func (m *mainModel) getGlobalCommands(msg tea.KeyMsg) []tea.Cmd {
 		default:
 			m.currView = listView
 		}
+
+		// case key.Matches(msg, keys.Back):
+		// 	f, err := tea.LogToFile("debug.log", "debug")
+		// 	if err != nil {
+		// 		fmt.Println("error", err)
+		// 	}
+		// 	f.WriteString(msg.String())
+		// 	defer f.Close()
+		// 	m.currView = listView
 	}
 
 	return cmds
@@ -41,8 +48,8 @@ func (m *mainModel) getPerViewCommands(msg tea.KeyMsg) []tea.Cmd {
 	var cmds []tea.Cmd
 	switch m.currView {
 	case listView:
-		switch msg.String() {
-		case "enter":
+		switch {
+		case key.Matches(msg, keys.Enter):
 			i, ok := m.queries.list.SelectedItem().(item)
 			if ok {
 				m.queries.selected = i.Title()
@@ -80,18 +87,14 @@ func (m *mainModel) getPerViewCommands(msg tea.KeyMsg) []tea.Cmd {
 		}
 
 	case envVarsView:
-		if msg.String() == "ctrl+s" {
-			// content := m.envVars.textarea.Value()
-			// m := GetEnvVars(content)
-			// fmt.Println(m)
-			m := readEnvVars()
-			s := stringifyEnvVars(m)
-			fmt.Println(s)
-			isRespReady := func() tea.Msg {
-				// return isResponseReady(true)
-				return tea.Quit()
-			}
-			cmds = append(cmds, isRespReady)
+		switch {
+		case key.Matches(msg, keys.SaveEnvVars):
+			content := m.envVars.textarea.Value()
+			utils.OverwriteEnvVars(content)
+			m.currView = listView
+
+		case key.Matches(msg, keys.Back):
+			m.currView = listView
 		}
 	}
 

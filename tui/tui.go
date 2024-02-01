@@ -12,6 +12,7 @@ import (
 
 const (
 	// URL                                 = "https://rickandmortyapi.com/graphql"
+	RESPONSE_RIGHT_MARGIN               = 2
 	ENV_VARS_CHAR_LIMIT                 = 5000
 	useHighPerformanceRenderer          = false
 	spinnerView                currView = iota
@@ -62,8 +63,8 @@ func Start() {
 }
 
 func (m mainModel) Init() tea.Cmd {
-	f := getQueriesFolderPath()
-	return tea.Batch(m.spinner.model.Tick, getQueriesList(f))
+	path := getQueriesFolderPath()
+	return tea.Batch(m.spinner.model.Tick, getQueriesList(path))
 }
 
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -106,7 +107,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case responseMsg:
 		m.response.content = msg
-		m.response.model.SetContent(string(m.response.content))
+		m.setResponseContent()
 
 		isRespReady := func() tea.Msg {
 			return isResponseReady(true)

@@ -48,6 +48,7 @@ func gqlReq(url string, file string) tea.Cmd {
 		f.KeyColor = color.New(color.FgMagenta)
 
 		s, err := f.Marshal(obj)
+
 		utils.CheckError(err)
 
 		return responseMsg(s)
@@ -66,9 +67,14 @@ func (m *mainModel) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
+func (m *mainModel) setResponseContent() {
+	content := string(m.response.content)
+	styledContent := lipgloss.NewStyle().Width(m.response.model.Width - RESPONSE_RIGHT_MARGIN).Render(content)
+	m.response.model.SetContent(styledContent)
+}
+
 func (m *mainModel) setViewportViewSize(msg tea.WindowSizeMsg, headerHeight int, verticalMarginHeight int) tea.Cmd {
-	// TODO: Check how to make full width when in response view
-	w := msg.Width - m.queries.list.Height()
+	w := msg.Width
 
 	if !m.response.ready {
 		// Since this program is using the full size of the viewport we
@@ -79,7 +85,8 @@ func (m *mainModel) setViewportViewSize(msg tea.WindowSizeMsg, headerHeight int,
 		m.response.model = viewport.New(w, msg.Height-verticalMarginHeight)
 		m.response.model.YPosition = headerHeight
 		m.response.model.HighPerformanceRendering = useHighPerformanceRenderer
-		m.response.model.SetContent(string(m.response.content))
+
+		// m.setResponseContent()
 		m.response.ready = true
 
 		// This is only necessary for high performance rendering, which in

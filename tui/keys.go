@@ -18,19 +18,20 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 type keyMap struct {
-	New     key.Binding
-	Edit    key.Binding
-	Delete  key.Binding
-	Up      key.Binding
-	Down    key.Binding
-	Right   key.Binding
-	Left    key.Binding
-	Enter   key.Binding
-	Help    key.Binding
-	Quit    key.Binding
-	Back    key.Binding
-	EnvVars key.Binding
-	Tab     key.Binding
+	New         key.Binding
+	Edit        key.Binding
+	Delete      key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	Right       key.Binding
+	Left        key.Binding
+	Enter       key.Binding
+	Help        key.Binding
+	Quit        key.Binding
+	Back        key.Binding
+	Tab         key.Binding
+	EnvVars     key.Binding
+	SaveEnvVars key.Binding
 }
 
 var keys = keyMap{
@@ -71,19 +72,23 @@ var keys = keyMap{
 		key.WithHelp("?", "toggle help"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q/ctrl+c", "quit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "quit"),
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "back"),
 	),
+	Tab: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "switch views"),
+	),
 	EnvVars: key.NewBinding(
 		key.WithKeys("ctrl+e"),
 		key.WithHelp("ctlr+e", "toggle env vars"),
 	),
-	Tab: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "switch views"),
+	SaveEnvVars: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "save env vars"),
 	),
 }
