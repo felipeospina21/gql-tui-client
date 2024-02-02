@@ -45,9 +45,10 @@ func newModel() mainModel {
 	ev := readEnvVars()
 	s := stringifyEnvVars(ev)
 	apiUrl := ev["URL"]
+	token := ev["TOKEN"]
 
 	m.newSpinnerModel()
-	m.newQueriesModel(apiUrl)
+	m.newQueriesModel(apiUrl, token)
 	m.newEnvVarModel(ENV_VARS_CHAR_LIMIT, s)
 	return m
 }

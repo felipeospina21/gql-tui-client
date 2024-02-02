@@ -65,7 +65,7 @@ func (m *mainModel) getPerViewCommands(msg tea.KeyMsg) []tea.Cmd {
 
 				cmds = append(cmds, isRespReady)
 			} else {
-				cmds = append(cmds, gqlReq(m.queries.apiUrl, "./queries/"+m.queries.selected))
+				cmds = append(cmds, m.gqlReq(m.queries.apiUrl, "./queries/"+m.queries.selected))
 			}
 		}
 

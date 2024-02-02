@@ -30,14 +30,17 @@ type response struct {
 
 func (e errMsg) Error() string { return e.err.Error() }
 
-func gqlReq(url string, file string) tea.Cmd {
+func (m *mainModel) gqlReq(url string, file string) tea.Cmd {
 	return func() tea.Msg {
 		b, err := os.ReadFile(file)
 		utils.CheckError(err)
+		bearer := fmt.Sprintf("Bearer %s", m.queries.token)
 
 		var obj map[string]interface{}
 		client := graphql.NewClient(url)
 		req := graphql.NewRequest(string(b))
+		req.Header.Add("Authorization", bearer)
+
 		err = client.Run(context.Background(), req, &obj)
 		if err != nil {
 			return error(err)
