@@ -9,13 +9,14 @@ import (
 )
 
 type Config struct {
-	Folder struct {
+	Queries struct {
 		Location string `yaml:"location"`
 	}
 }
 
+// Reads configuration file from default location
 func Read() Config {
-	// TODO: Make this dynamic, path as cmd arg or default to this.
+	// TODO: Make configPath as cmd arg to override default location
 	home := os.Getenv("HOME")
 	configPath := fmt.Sprintf("%s/.config/goql/goql.yaml", home)
 

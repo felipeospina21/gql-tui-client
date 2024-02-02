@@ -28,22 +28,24 @@ type queriesModel struct {
 	selected string
 	ready    isListReady
 	apiUrl   string
+	token    string
 }
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
-func (m *mainModel) newQueriesModel(apiUrl string) {
+func (m *mainModel) newQueriesModel(apiUrl string, token string) {
 	items := []list.Item{}
 
 	m.queries.list = list.New(items, list.NewDefaultDelegate(), 0, 0)
 	m.queries.list.Title = "Queries"
 	m.queries.apiUrl = apiUrl
+	m.queries.token = token
 }
 
 func getQueriesFolderPath() string {
-	path := config.Read().Folder.Location
+	path := config.Read().Queries.Location
 
 	// NOTE: Match substring that starts with $ and ends with /
 	envVar := regexp.MustCompile(`\$(\w+)(?:/|$)`)
@@ -73,20 +75,44 @@ func getQueriesFolderPath() string {
 
 func getQueriesList(rootDir string) tea.Cmd {
 	return func() tea.Msg {
-		// TODO: replace Walk with WalkDir func
 		queriesNames := []list.Item{}
-		err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				fmt.Println(err)
 				return err
 			}
-			if !info.IsDir() {
-				queriesNames = append(queriesNames, item{title: info.Name(), desc: "query"})
+
+			if !d.IsDir() {
+				folder := getFolderName(path)
+				queriesNames = append(queriesNames, item{title: d.Name(), desc: folder})
 			}
+
 			return nil
 		})
 
 		utils.CheckError(err)
 		return listItems(queriesNames)
 	}
+}
+
+func getFolderName(path string) string {
+	index := strings.Index(path, "queries/")
+	if index == -1 {
+		fmt.Println("The input does not contain 'queries/'.")
+	}
+
+	// Extract everything after "queries/"
+	result := path[index+len("queries/"):]
+	spl := strings.Split(result, "/")
+
+	var folder string
+	b := strings.Contains(spl[len(spl)-1], ".gql")
+
+	if len(spl) >= 2 && b {
+		folder = spl[len(spl)-2]
+	} else if len(spl) < 2 && b {
+		folder = ""
+	}
+
+	return folder
 }
